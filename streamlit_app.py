@@ -520,8 +520,8 @@ def process_donation_with_debug(cc_data, debug_log):
         else:
             log("No shipping method selection required")
         
-        # Step 8: Go to checkout page
-        log("STEP 7b: Going to checkout page", "STEP")
+        # Step 8: Go to checkout page and extract new payment token
+        log("STEP 7b: Going to checkout page and extracting form token", "STEP")
         checkout_page = session.get('https://www.ywampublishing.com/checkout/index', 
                                  headers={'user-agent': user_agent})
         
@@ -531,6 +531,15 @@ def process_donation_with_debug(cc_data, debug_log):
         with open("checkout_page.html", "w", encoding="utf-8") as f:
             f.write(checkout_page.text)
         log("Saved checkout page for analysis")
+        
+        # Extract the final placeorder token from the checkout page
+        place_order_token_match = re.search(r'<form action="/checkout/placeorder"[^>]*>.*?<input name="__RequestVerificationToken" type="hidden" value="([^"]+)"', checkout_page.text, re.DOTALL)
+        
+        if place_order_token_match:
+            tokenpayment = place_order_token_match.group(1)
+            log(f"Successfully extracted new form token: {tokenpayment[:10]}...", "SUCCESS")
+        else:
+            log("Using previously extracted token - might cause issues", "WARN")
         
         # Step 9: Place order
         log("STEP 7c: Placing final order", "STEP")
