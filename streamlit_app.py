@@ -4,7 +4,6 @@ import re
 import time
 import random
 import string
-from fake_useragent import UserAgent
 import json
 
 # Set page configuration
