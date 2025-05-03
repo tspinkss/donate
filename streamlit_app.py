@@ -15,7 +15,6 @@ try:
 except ImportError:
     st.warning("Installing required libraries...")
     os.system('pip install pyfiglet user_agent requests')
-    import user_agent
 
 # Function to get reCAPTCHA token
 def get_recaptcha_token(site_key, page_url):
