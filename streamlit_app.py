@@ -184,7 +184,8 @@ def Tele(ccx, recaptcha_token=None):
     }
     
     with st.spinner("Checking card... register phase"):
-        response = r.get('https://www.yazoomills.com/my-account', headers=headers)
+        # First attempt to get the my-account page
+        response = r.get('https://www.yazoomills.com/my-account', headers=headers, allow_redirects=True)
         
         # Debug HTML response
         html_snippet = response.text[:2000] + "..." if len(response.text) > 2000 else response.text
@@ -192,9 +193,41 @@ def Tele(ccx, recaptcha_token=None):
         st.write("First 2000 characters of HTML response:")
         st.code(html_snippet, language="html")
         
-        # Check if the site might be blocking access
-        if "captcha" in response.text.lower() or "cloudflare" in response.text.lower():
-            st.warning("Possible protection detected (Cloudflare or CAPTCHA)")
+        # Check if being redirected to a CAPTCHA page
+        if "sgcaptcha" in response.url or "sgcaptcha" in response.text:
+            st.error("SiteGuard CAPTCHA detected!")
+            st.warning("""
+            The site is using SiteGuard CAPTCHA protection. You need to:
+            1. Visit https://www.yazoomills.com/my-account in a browser
+            2. Solve the CAPTCHA challenge manually
+            3. Get the cookies after solving the CAPTCHA
+            """)
+            
+            # Allow manual cookie input
+            cookie_input = st.text_area("Enter browser cookies after solving CAPTCHA (format: name=value; name2=value2;)")
+            
+            if cookie_input and st.button("Use these cookies"):
+                # Parse cookies into a dict
+                cookie_dict = {}
+                for cookie_pair in cookie_input.split(';'):
+                    if '=' in cookie_pair:
+                        name, value = cookie_pair.strip().split('=', 1)
+                        cookie_dict[name] = value
+                
+                # Add cookies to the session
+                for name, value in cookie_dict.items():
+                    r.cookies.set(name, value, domain='www.yazoomills.com')
+                
+                # Try again with the cookies
+                st.info("Trying again with provided cookies...")
+                response = r.get('https://www.yazoomills.com/my-account', headers=headers)
+                
+                # Show new response
+                html_snippet = response.text[:2000] + "..." if len(response.text) > 2000 else response.text
+                st.write(f"New response status code: {response.status_code}")
+                st.code(html_snippet, language="html")
+            else:
+                return "Error: SiteGuard CAPTCHA detected. Please provide cookies after manually solving the CAPTCHA."
         
         # Try to extract nonce with more detailed error handling
         try:
