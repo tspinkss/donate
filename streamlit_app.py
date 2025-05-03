@@ -9,12 +9,10 @@ import time
 
 # Install required packages if not already installed
 try:
-    import pyfiglet
     import user_agent
 except ImportError:
     st.warning("Installing required libraries...")
-    os.system('pip install pyfiglet user_agent requests')
-    import pyfiglet
+    os.system('pip install user-agents requests')
     import user_agent
 
 # Function to get reCAPTCHA token
