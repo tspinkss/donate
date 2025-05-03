@@ -6,8 +6,16 @@ import random
 import string
 import requests
 import time
-import json
 
+# Install required packages if not already installed
+try:
+    import pyfiglet
+    import user_agent
+except ImportError:
+    st.warning("Installing required libraries...")
+    os.system('pip install pyfiglet user_agent requests')
+    import pyfiglet
+    import user_agent
 
 # Function to get reCAPTCHA token
 def get_recaptcha_token(site_key, page_url):
