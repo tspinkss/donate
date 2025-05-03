@@ -1,13 +1,28 @@
 import os
 import streamlit as st
-import re
-import base64
-import random
-import string
-import requests
-import time
+try:
+    import pyfiglet, webbrowser, user_agent, time
+    import requests
+    import re
+    import base64
+    import random
+    import string
+    
+except ImportError as e:
+    print("An error occurred in installing library:", e)
+    print("Libraries are installed.")
+    os.system('pip install pyfiglet user_agent requests')
+    import pyfiglet
+    import webbrowser
+    import user_agent
+    import time
+    import requests
+    import re
+    import base64
+    import random
+    import string
+    import requests
 
-import user_agent
 
 # Function to get reCAPTCHA token
 def get_recaptcha_token(site_key, page_url):
