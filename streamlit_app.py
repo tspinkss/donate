@@ -559,16 +559,77 @@ def process_donation_with_debug(cc_data, debug_log):
         
         log(f"Placing order with token: {tokenpayment[:10]}...")
         
-        req6 = session.post('https://www.ywampublishing.com/checkout/placeorder', headers=headers, data=data)
-        
-        log(f"Place order status code: {req6.status_code}")
-        if req6.status_code != 200:
-            log(f"Warning: Place order returned {req6.status_code}", "WARN")
-        
-        # Save the full response for detailed analysis
-        with open("place_order_response.html", "w", encoding="utf-8") as f:
-            f.write(req6.text)
-        log("Saved order placement response for analysis")
+        # Add detailed logging of the request we're about to send
+        log("Sending place order request with data:", "INFO")
+        log(f"  Token: {tokenpayment[:10]}...")
+        log(f"  OrderNotes: (empty)")
+        log(f"  OkToEmailSelected: false")
+        log("Headers:", "INFO")
+        for key, value in headers.items():
+            log(f"  {key}: {value[:30]}..." if len(str(value)) > 30 else f"  {key}: {value}")
+            
+        try:
+            req6 = session.post('https://www.ywampublishing.com/checkout/placeorder', headers=headers, data=data, timeout=30)
+            
+            log(f"Place order status code: {req6.status_code}")
+            
+            # Save the full response for detailed analysis
+            with open("place_order_response.html", "w", encoding="utf-8") as f:
+                f.write(req6.text)
+            log("Saved order placement response for analysis")
+            
+            if req6.status_code == 500:
+                log("HTTP 500 Internal Server Error detected", "ERROR")
+                log("This means the server encountered an unexpected condition that prevented it from fulfilling the request", "ERROR")
+                
+                # Try to parse the response to find any clues
+                if "Error: 500" in req6.text:
+                    error_msg_match = re.search(r'<div class="alert alert-danger">(.*?)</div>', req6.text, re.DOTALL)
+                    if error_msg_match:
+                        error_message = error_msg_match.group(1).strip()
+                        log(f"Server error message: {error_message}", "ERROR")
+                    
+                # Also extract raw response details
+                log("Response Headers:", "INFO")
+                for key, value in req6.headers.items():
+                    log(f"  {key}: {value}", "INFO")
+                
+                # Check if we can get more error details
+                if '<pre>' in req6.text and '</pre>' in req6.text:
+                    error_details = re.search(r'<pre>(.*?)</pre>', req6.text, re.DOTALL)
+                    if error_details:
+                        log(f"Error details: {error_details.group(1)}", "ERROR")
+                
+                # Save raw response to a separate file for inspection
+                with open("place_order_response_raw.txt", "w", encoding="utf-8") as f:
+                    f.write(f"STATUS CODE: {req6.status_code}\n\n")
+                    f.write("HEADERS:\n")
+                    for key, value in req6.headers.items():
+                        f.write(f"{key}: {value}\n")
+                    f.write("\nCONTENT:\n")
+                    f.write(req6.text)
+                log("Saved raw response to place_order_response_raw.txt", "INFO")
+                
+                # Try to suggest potential issues
+                log("Potential causes of HTTP 500 error:", "INFO")
+                log("1. Server-side validation error with the order data", "INFO")
+                log("2. Payment processing issue or configuration problem", "INFO")
+                log("3. Server timeout or overload", "INFO")
+                log("4. Missing or incorrect parameters in the request", "INFO")
+                
+                # Provide a tip about the response file
+                log("Check place_order_response_raw.txt and place_order_response.html for details", "INFO")
+                
+            elif req6.status_code != 200:
+                log(f"Warning: Place order returned {req6.status_code}", "WARN")
+                
+        except requests.exceptions.RequestException as e:
+            log(f"Request exception during place order: {str(e)}", "ERROR")
+            # Still try to save any partial response
+            if 'req6' in locals() and hasattr(req6, 'text'):
+                with open("place_order_error_response.html", "w", encoding="utf-8") as f:
+                    f.write(req6.text)
+                log("Saved error response to place_order_error_response.html", "INFO")
         
         # Extract result from response
         error_match = re.search(r'<div class="notice notice-failure">\s*(.*?)\s*</div>', req6.text)
