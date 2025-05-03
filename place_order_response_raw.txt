@@ -1,3 +1,25 @@
+STATUS CODE: 500
+
+HEADERS:
+Date: Sat, 03 May 2025 18:34:54 GMT
+Content-Type: text/html; charset=utf-8
+Transfer-Encoding: chunked
+Connection: keep-alive
+Cache-Control: private
+x-aspnetmvc-version: 5.3
+x-frame-options: SAMEORIGIN
+content-security-policy: frame-ancestors 'self'
+x-content-security-policy: frame-ancestors 'self'
+x-aspnet-version: 4.0.30319
+x-powered-by: ASP.NET
+cf-cache-status: DYNAMIC
+Report-To: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v4?s=y1IvPFPwzeqxAXpt2QmN2ZGKVqdbb%2BvPHNMOMqigynT0LxtbvFVLDStLOSWtTuh%2BkQs92zjuRqnuZaxMCf2yjpXX%2BDb6YSxJsSyxrwaIA0dtWWBEmZac5eg6wUnEOrHbIFmqifVTZw8%3D"}],"group":"cf-nel","max_age":604800}
+NEL: {"success_fraction":0,"report_to":"cf-nel","max_age":604800}
+Server: cloudflare
+CF-RAY: 93a1dae7d93dd705-IAD
+server-timing: cfL4;desc="?proto=TCP&rtt=3717&min_rtt=1538&rtt_var=3403&sent=123&recv=59&lost=0&retrans=0&sent_bytes=117495&recv_bytes=18146&delivery_rate=8183381&cwnd=254&unsent_bytes=0&cid=0049d5aaedb41610&ts=21605&x=0"
+
+CONTENT:
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
