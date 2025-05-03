@@ -26,7 +26,7 @@ def get_recaptcha_token(site_key, page_url):
     # Uncomment and add your API key if you use 2captcha
     """
     try:
-        api_key = "YOUR_2CAPTCHA_API_KEY"  # Replace with your actual 2captcha API key
+        api_key = "9f21f1ce48c5ab80f2f9b423fefb1682"  # Replace with your actual 2captcha API key
         data = {
             'key': api_key,
             'method': 'userrecaptcha',
