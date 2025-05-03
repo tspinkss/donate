@@ -7,13 +7,7 @@ import string
 import requests
 import time
 
-# Install required packages if not already installed
-try:
-    import user_agent
-except ImportError:
-    st.warning("Installing required libraries...")
-    os.system('pip install user-agents requests')
-    import user_agent
+import user_agent
 
 # Function to get reCAPTCHA token
 def get_recaptcha_token(site_key, page_url):
